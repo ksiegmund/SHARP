@@ -1,0 +1,95 @@
+---
+title: "SHARP data"
+author: "ks"
+date: "5/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exposome
+
+```{r load-data}
+load("data/exposome.RData")
+```
+
+```{r datafiles}
+ls()
+```
+
+```{r data-sizes}
+dim(codebook)
+dim(covariates)
+dim(exposome)
+dim(phenotype)
+```
+
+```{r covar}
+head(covariates)
+```
+
+
+```{r phenotype}
+head(phenotype)
+```
+
+
+```{r phenotype}
+hist(phenotype$hs_Gen_Tot)
+```
+
+```{r phenotype}
+hist(exposome$e3_asmokcigd_p_None)
+```
+
+
+```{r phenotype}
+colnames(exposome[,85:105])
+```
+
+```{r phenotype}
+#cor(exposome[,85:103])
+```
+
+```{r viz_exposome}
+X <- scale(exposome[,85:103]) # scale the data for 
+X_dist <- get_dist(X, stand = TRUE, method = "euclidean")
+fviz_dist(X_dist, gradient = list(low = "blue", mid = "white", high = "red"), show_labels = FALSE)
+```
+
+
+```{r gex}
+load("data/genexpr.Rdata")
+gex <- genexpr
+rm(genexpr)
+dim(gex)
+```
+
+```{r dnam}
+load("data/methy.Rdata")
+dnam <- methy
+rm(methy)
+dim(dnam)
+```
+
+Find subset of individuals with both DNAm and gene expression.
+
+```{r make-dataset}
+colnames(gex)[1:3]
+colnames(dnam)[1:3]
+
+gex <- gex[,order(as.numeric(colnames(gex)))]
+colnames(gex)[1:3]
+dnam <- dnam[,order(as.numeric(colnames(dnam)))]
+colnames(dnam)[1:3]
+
+isctids <- intersect(colnames(gex),colnames(dnam))
+length(isctids)
+
+sdat$gex <- gex[,isctids]
+sdat$dnam <- dnam[,isctids]
+sdat$pheno <- 
+```
+
