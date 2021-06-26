@@ -70,7 +70,8 @@ identical(rownames(helix$expsm),
           as.character(helix$pDataE$ID))
 # add proteome data
 helix$prtm <- exprs(proteome)
-helix$prtm <- helix$prtm[,as.character(helix$covars$ID)]
+helix$prtm <- 
+    helix$prtm[,as.character(helix$covars$ID)]
 identical(as.character(helix$covars$ID),
           colnames(helix$prtm))
 
