@@ -1,0 +1,233 @@
+---
+title: "SHARP Clustering Lab: Part 2"
+author: "ks"
+date: "6/29/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# {.tabset}
+
+## Load libraries
+
+This time we're going to analyze the exposome and proteome data jointly and see how the canonical variables from a CCA of the proteome with exposome differ from the principle components from a PCA on the proteome alone. 
+
+```{r datafiles}
+source(knitr::purl("sharp-match-exposome-proteome.Rmd", quiet=TRUE))
+
+#ls()
+library(CCA)
+library(corrplot)
+```
+
+## CCA
+
+Let's perform CCA of the exposome and proteome and see what correlated summary variables we can find.  We will use the exposome from the postnatal period.
+
+```{r complete-data}
+dim(expsms)
+tprtm <- t(prtm)
+dim(tprtm)
+```
+
+
+Remove column 1 (ID), make the variables numeric, and identify the exposures from the postnatal period. The variables are assumed to be normally distributed, which is not true for all. This will require removing exposures that are unordered categorical variables.
+
+```{r exposome}
+n_exposome <- map_dfc(expsms[,-1],as.numeric)
+dim(n_exposome)
+# get exposome variable names from Postnatal time period
+post_expsm <- 
+  codebook %>%
+        filter(period=="Postnatal" & domain !="Covariates") %>%
+        filter(domain !="Phenotype") %>%
+        dplyr::select(variable_name)
+post_expsm <- as.character(unlist((post_expsm)))
+```
+
+We will scale the exposome and proteome for CCA.
+```{r scale-dat}
+postnX <- scale(n_exposome[,post_expsm])
+tprtm  <- scale(tprtm)
+```
+
+
+```{r cca}
+cc.out <- cc(postnX,tprtm)
+names(cc.out)
+```
+
+
+Let's see the 20 largest correlation estimates.
+```{r cca-cormat}
+#corrplot(diag(cc.out$cor[1:20]))
+plot(cc.out$cor,type="b")
+```
+
+The top 5 canonical variates are very highly correlated. We can access the scores directly from the output as well to look at their pairwise correlation.
+
+```{r scores-output}
+names(cc.out$scores)
+```
+
+Let's take a look at the first pair of canonical variables:
+```{r scatplot-ccpr1}
+ccpr1 <- cbind.data.frame(cxs1 = cc.out$scores$xscores[,1],
+                          cys1 = cc.out$scores$yscores[,1])
+ggplot(ccpr1, aes(x=cxs1, y=cys1, 
+          color = covars$hs_child_age_None)) + 
+          geom_point(size=2.5) + 
+          labs(color="Child Age")
+```
+
+What child covariates/phenotypes correlate with the canonical variables?
+
+```{r cor-covar-yscores}
+n_phenos <- map_dfc(phenos[,-1],as.numeric)
+corrplot(cor(n_phenos,cc.out$scores$yscores[,1:5]),
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+Which proteins correlate with the 1st 5 canonical variables?
+```{r Y.yscores}
+corrplot(cc.out$scores$corr.Y.yscores[,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+And which exposure variables correlate with the 1st 5 canonical variables for the exposome?
+```{r X.xscores}
+idx <- which(rowMax(abs(cc.out$scores$corr.X.xscores))>0.4)
+corrplot(cc.out$scores$corr.X.xscores[idx,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+## PCA of Proteome
+
+Let's do a PCA of the proteome and see if we pull out the same variables.
+
+```{r pca-proteome}
+#already scaled
+my.pca <- prcomp(tprtm,retx=TRUE)
+dfx <- as.data.frame(x = my.pca$x)
+
+ggplot(dfx,  aes(x=PC1, y=PC2, color =covars$h_cohort)) + geom_point(size=2.5) +
+       labs(color="h_cohort")
+```
+
+```{r cohort-effects}
+fit <- lm(dfx$PC1 ~ covars$h_cohort)
+summary(fit)$r.squared
+```
+
+Are the proteome PCs correlated with canonical variables identified from a joint analysis with the postnatal exposome?
+```{r cor-ccy-pcs}
+cormat <- cor(dfx[,1:10],cc.out$scores$yscores)
+corrplot(cormat[,1:10],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+Which proteome variables are most correlated (abs cor > 0.4) with the top 10 PCs?
+```{r cor-proteome-pcs}
+cormat <- cor(tprtm,dfx[,1:10])
+idx <- which(rowMax(abs(cormat))>0.4)
+corrplot(cormat[idx,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+Let's re-run the correlations between proteome and canonical variables and see how they differ from the correlations with the PCs.
+```{r cor-Y.yscore-repeat}
+corrplot(cc.out$scores$corr.Y.yscores[,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+Which summary variables are more strongly correlated with phenotype? The PCs, or the CVs?
+
+```{r cor-phenos-pcs}
+cormat <- cor(n_phenos,dfx[,1:10])
+corrplot(cormat,
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+```{r cor-phenos-cvs}
+cormat <- cor(n_phenos,cc.out$scores$yscores[,1:10])
+corrplot(cormat,
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+## CCA on Residuals
+
+Let's adjust the proteome & exposome by cohort, and then re-do the cca.
+
+Let's get residuals from regressing cohort out of exposome.
+```{r cohortresids}
+r.postnX <- postnX
+nc <- ncol(postnX)
+for (i in 1:nc) {
+  r.postnX[,i] <- lm(postnX[,i]~covars$h_cohort)$resid
+}
+
+r.tprtm <- tprtm
+nc <- ncol(tprtm)
+for (i in 1:nc) {
+  r.tprtm[,i] <- lm(tprtm[,i]~covars$h_cohort)$resid
+}
+```
+
+```{r rescale}
+r.postnX <- scale(r.postnX)
+r.tprtm  <- scale(r.tprtm)
+```
+
+
+```{r cca-resids}
+cc.out <- cc(r.postnX,r.tprtm)
+```
+
+Let's see the 20 largest correlation estimates.
+```{r cca-cormat-resids}
+plot(cc.out$cor,type="b")
+```
+
+Now only 1  pair off canonical variables are show an correlation above 0.6. We can access the scores directly from the output as well to look at their pairwise correlation.
+
+Let's take a look at the first pair of canonical variates:
+```{r scatplot-ccpr1-resids}
+ccpr1 <- cbind.data.frame(cxs1 = cc.out$scores$xscores[,1],
+                          cys1 = cc.out$scores$yscores[,1])
+ggplot(ccpr1, aes(x=cxs1, y=cys1, 
+          color = covars$hs_child_age_None)) + 
+          geom_point(size=2.5) + 
+          labs(color="Child Age")
+```
+That's good. The correlation with age is gone. Is there an interesting relationship remaining?
+
+What child covariates/phenotypes correlate with the canonical variables?
+
+```{r cor-covar-yscores-resids}
+corrplot(cor(n_phenos,cc.out$scores$yscores[,1:5]),
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+Which proteins correlate with the 1st 5 canonical variables?
+```{r yscores-resids}
+corrplot(cc.out$scores$corr.Y.yscores[,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+And which exposure variables correlate with the 1st 5 canonical variables for the exposome?
+```{r xscores-resids}
+idx <- which(rowMax(abs(cc.out$scores$corr.X.xscores))>0.4)
+corrplot(cc.out$scores$corr.X.xscores[idx,1:5],
+         cl.cex=0.6,cl.ratio=0.5,cl.align.text = "l")
+```
+
+
+Now let's try something similar, but using gene expression and DNA methylation data from the Cancer Genome Atlas...
+
+## sessionInfo
+
+```{sI}
+sessionInfo()
+```
