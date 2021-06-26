@@ -1,0 +1,86 @@
+---
+title: "SHARP data"
+author: "ks"
+date: "5/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Exposome
+
+```{r load-data}
+load("data/exposome.RData")
+ls()
+```
+
+```{r data-sizes}
+dim(codebook)
+dim(covariates)
+dim(phenotype)
+dim(exposome)
+```
+
+```{r covar}
+names(covariates)
+```
+
+
+```{r phenotype}
+names(phenotype)
+```
+
+
+```{r outcome}
+hist(phenotype$hs_zbmi_who)
+```
+
+
+```{r proteome}
+load("data/proteome.Rdata")
+dim(proteome)
+```
+
+Find subset of individuals with both proteome ane exposome.
+
+```{r common-ids}
+isctids <- intersect(covariates$ID,sampleNames(proteome))
+length(isctids)
+```
+
+Filter data to those with proteomic variables.
+
+```{r filter-data}
+covars <- covariates %>%
+          filter(is.element(ID,isctids))
+phenos <- phenotype %>%
+          filter(is.element(ID,isctids))
+expsms <- exposome %>%
+          filter(is.element(ID,isctids))
+```
+
+Check order of proteome samples, and match column
+order to that in covariate files.
+
+```{r order-proteome-measures}
+identical(covars$ID,sampleNames(proteome))
+prtm <- exprs(proteome)
+prtm <- prtm[,as.character(covars$ID)]
+identical(as.character(covars$ID),
+          colnames(prtm))
+```
+
+```{r cleanup}
+rm(proteome)
+rm(covariates)
+rm(exposome)
+rm(phenotype)
+rm(isctids)
+```
+
+```{r sI}
+sessionInfo()
+```

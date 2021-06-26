@@ -1,0 +1,83 @@
+---
+title: "SHARP-match-gex-exposome-proteome"
+author: "ks"
+date: "6/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Libraries
+
+```{r rlibraries}
+library(tidyverse)
+```
+
+## Load data
+```{r  data}
+load("data/mgex.RData")
+dim(mgex)
+load("data/proteome.Rdata")
+dim(proteome)
+load("data/exposome.RData")
+```
+
+Find subset of individuals with expression, proteome and exposome.
+
+```{r common-ids}
+isctids <- intersect(covariates$ID,sampleNames(mgex))
+length(isctids)
+isctids <- intersect(isctids, sampleNames(proteome))
+length(isctids)
+
+expsm  <- exposome %>%
+          filter(is.element(ID,isctids))
+covars <- covariates %>%
+          filter(is.element(ID,isctids))
+phenos <- phenotype  %>%
+          filter(is.element(ID,isctids))
+```
+
+## ----order-mgex-measures----------------
+```{r database}
+#identical(covars$ID,sampleNames(mgex))
+helix <- list()
+helix$covars <- covars
+# add phenotype data
+helix$phenos <- phenos
+identical(as.character(helix$covars$ID),
+          as.character(helix$phenos$ID))
+# add expression data
+helix$E <- exprs(mgex)
+helix$E <- helix$E[,as.character(helix$covars$ID)]
+identical(as.character(helix$covars$ID),
+          colnames(helix$E))
+# add expression pData
+helix$pDataE <- pData(mgex)
+helix$pDataE <- 
+    helix$pDataE[as.character(helix$covars$ID),]
+identical(as.character(helix$covars$ID),
+          as.character(helix$pDataE$ID))
+
+# add exposome data
+identical(as.character(expsm$ID),
+          colnames(helix$E))
+rownames(expsm) <- expsm$ID
+helix$expsm <- expsm[,-1]
+identical(rownames(helix$expsm),
+          as.character(helix$pDataE$ID))
+# add proteome data
+helix$prtm <- exprs(proteome)
+helix$prtm <- helix$prtm[,as.character(helix$covars$ID)]
+identical(as.character(helix$covars$ID),
+          colnames(helix$prtm))
+
+save(helix,file="helix.RData")
+save(codebook,file="codebook.RData")
+
+# add dnam??
+```
+
+
