@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 if (!requireNamespace("ggplot2", quietly = TRUE)) install.packages("ggplot2")
 if (!requireNamespace("plotly", quietly = TRUE)) install.packages("plotly")
-if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) install.packages("ComplexHeatmap")
+if (!requireNamespace("ComplexHeatmap", quietly = TRUE)) BiocManager::install("ComplexHeatmap")
 if (!requireNamespace("CCA", quietly = TRUE)) install.packages("CCA")
 if (!requireNamespace("corrplot", quietly = TRUE)) install.packages("corrplot")
 if (!requireNamespace("factoextra", quietly = TRUE)) install.packages("factoextra")
