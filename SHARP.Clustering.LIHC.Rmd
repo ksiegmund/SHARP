@@ -401,7 +401,7 @@ plot(kmfit, col = c(1:10), xlab = "Survival Time In Days", ylab = "Survival Prob
 ```{r}
 ggplot(data.frame(scr3),  aes(x=PC1, y=PC2,
                               color = factor(km10mcia$cluster))) + 
-              `geom_point() + labs(color="Cluster")
+              geom_point() + labs(color="Cluster")
 ```
 
 Do any of the top 10 latent variables predict death?
