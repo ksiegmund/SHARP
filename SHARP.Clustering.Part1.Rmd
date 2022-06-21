@@ -1,7 +1,7 @@
 ---
 title: "SHARP Clustering Lab: Part 1"
 author: "ks"
-date: "6/29/2021"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -34,7 +34,7 @@ library(tidyverse)
 Now let's upload the data.  I've subset the data to the 1170 participants who have both exposome and proteome measures.
 
 ```{r datafiles}
-load("helix.RData")
+load("~kims/GitHub/SHARP/helix.RData")
 ```
 
 This will show the similar dimensions of each data set.
