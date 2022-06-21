@@ -1,7 +1,7 @@
 ---
 title: "SHARP: TCGA colon adenocarcinoma"
 author: "ks"
-date: "6/29/2021"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -25,7 +25,7 @@ I also filtered the DNA methylation data on variance, requiring variance greater
 Here are the variables in the data set:
 
 ```{r load-data, echo=FALSE}
-load("coad.RData")
+load("~kims/GitHub/SHARP/coad.RData")
 str(coad)
 ```
 
